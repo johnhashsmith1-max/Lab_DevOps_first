@@ -18,7 +18,7 @@ pipeline {
                 sleep time: 5, unit: 'SECONDS'
 
                 echo "Запуск автоматических тестов внутри контейнера..."
-                bat "docker exec ml_fake_news_container pytest"
+                bat "docker exec ml_fake_news_container python -m pytest"
             }
         }
     }
