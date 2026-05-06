@@ -5,13 +5,10 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 echo "Запуск контейнера из свежего образа..."
-                // Останавливаем и удаляем старый контейнер, если он работал
                 bat "docker stop ml_fake_news_container || exit 0"
                 bat "docker rm ml_fake_news_container || exit 0"
 
-                // Запускаем контейнер из образа, который мы собрали на этапе CI
-                // Флаг -d запускает его в фоновом режиме
-                bat "docker run -d -p 8000:8000 -v %WORKSPACE%\\experiments:/app/experiments --name ml_fake_news_container tagirdpo/devops_2026:latest"
+                bat "docker run -d -p 8000:8000 --name ml_fake_news_container tagirdpo/devops_2026:latest"
             }
         }
 
@@ -21,7 +18,6 @@ pipeline {
                 sleep time: 5, unit: 'SECONDS'
 
                 echo "Запуск автоматических тестов внутри контейнера..."
-                // Команда docker exec выполняет команду pytest прямо внутри работающего контейнера
                 bat "docker exec ml_fake_news_container pytest"
             }
         }
