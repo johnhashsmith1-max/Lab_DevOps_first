@@ -1,9 +1,18 @@
-FROM python:3.8-slim
+FROM python:3.14
 
-ENV PYTHONUNBUFFERED 1
-
+# Устанавливаем рабочую директорию внутри контейнера
 WORKDIR /app
 
-ADD . /app
+# Копируем файл с зависимостями и устанавливаем их
+# Делаем это отдельным шагом для кеширования
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN pip install -r requirements.txt
+# Копируем весь остальной код проекта в контейнер
+COPY . .
+
+# Указываем, что наше приложение работает на порту 8000
+EXPOSE 8000
+
+# Команда для запуска нашего FastAPI сервера
+CMD ["uvicorn", "src.predict:app", "--host", "0.0.0.0", "--port", "8000"]

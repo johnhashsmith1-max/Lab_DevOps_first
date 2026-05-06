@@ -1,81 +1,51 @@
-"""
-train.py — обучение модели классификации новостей
-"""
 import pandas as pd
+import configparser
 import joblib
+import os
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report, accuracy_score
-import logging
-import configparser
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score, classification_report
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-
-def load_config(config_path: str = "config.ini") -> configparser.ConfigParser:
+def train_model():
+    # 1. Читаем конфигурацию из config.ini
     config = configparser.ConfigParser()
-    config.read(config_path)
-    return config
+    config.read('config.ini')
 
+    max_features = int(config['hyperparameters']['max_features'])
+    c_param = float(config['hyperparameters']['C'])
+    random_state = int(config['hyperparameters']['random_state'])
 
-def train_model(data_path: str = "data/processed/news_data.csv",
-                config_path: str = "config.ini"):
-    """Обучает модель и сохраняет артефакты"""
-    # Загрузка конфигурации
-    config = load_config(config_path)
+    print("Загрузка данных...")
+    df = pd.read_csv('data/processed/news_data.csv')
 
-    # Параметры
-    test_size = config.getfloat('model', 'test_size', fallback=0.25)
-    max_features = config.getint('vectorizer', 'max_features', fallback=5000)
-    random_state = config.getint('model', 'random_state', fallback=42)
-
-    # Загрузка данных
-    logger.info(f"Loading data from {data_path}")
-    df = pd.read_csv(data_path)
-
-    # Подготовка признаков и целевой переменной
-    X = df['text_clean'].fillna('')
+    X = df['text']
     y = df['label']
 
-    # Разделение
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=y
-    )
+    # Разбиваем данные на обучающую (80%) и тестовую (20%) выборки
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_state)
 
-    # Векторизация
-    logger.info(f"Vectorizing text with TF-IDF (max_features={max_features})")
-    vectorizer = TfidfVectorizer(max_features=max_features, ngram_range=(1, 2))
-    X_train_vec = vectorizer.fit_transform(X_train)
-    X_test_vec = vectorizer.transform(X_test)
+    print("Создание пайплайна и обучение модели...")
+    # Pipeline объединяет процесс перевода текста в числа (Tfidf) и саму модель (LogisticRegression)
+    pipeline = Pipeline([
+        ('tfidf', TfidfVectorizer(max_features=max_features, stop_words='english')),
+        ('clf', LogisticRegression(C=c_param, random_state=random_state, max_iter=200))
+    ])
 
-    # Обучение модели
-    logger.info("Training Logistic Regression model")
-    model = LogisticRegression(
-        max_iter=config.getint('model', 'max_iter', fallback=1000),
-        random_state=random_state,
-        class_weight='balanced'
-    )
-    model.fit(X_train_vec, y_train)
+    # Обучаем модель
+    pipeline.fit(X_train, y_train)
 
-    # Оценка
-    y_pred = model.predict(X_test_vec)
-    accuracy = accuracy_score(y_test, y_pred)
-    logger.info(f"\nTest Accuracy: {accuracy:.4f}")
-    logger.info(f"\nClassification Report:\n{classification_report(y_test, y_pred)}")
+    print("Оценка модели...")
+    predictions = pipeline.predict(X_test)
+    acc = accuracy_score(y_test, predictions)
+    print(f"Точность (Accuracy): {acc:.4f}")
+    print(classification_report(y_test, predictions))
 
-    # Сохранение артефактов
-    joblib.dump(model, 'models/model.pkl')
-    joblib.dump(vectorizer, 'models/vectorizer.pkl')
-    logger.info("Model and vectorizer saved to models/")
-
-    return {
-        'accuracy': accuracy,
-        'report': classification_report(y_test, y_pred, output_dict=True)
-    }
-
+    # Сохраняем готовую модель в папку experiments
+    os.makedirs('experiments', exist_ok=True)
+    joblib.dump(pipeline, 'experiments/model.pkl')
+    print("Модель успешно сохранена в experiments/model.pkl")
 
 if __name__ == "__main__":
-    metrics = train_model()
-    print(f"\nFinal Accuracy: {metrics['accuracy']:.4f}")
+    train_model()

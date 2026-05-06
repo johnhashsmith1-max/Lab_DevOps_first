@@ -130,9 +130,13 @@ dmypy.json
 
 # Place data for non local DVC
 # /data 
-experiments/
+experiments/*.pkl
 
 data/raw/*.csv
 data/processed/*.csv
 .venv/
 __pycache__/
+
+data/raw/*.csv
+data/processed/*.csv
+.venv/
