@@ -1,12 +1,28 @@
 version: '3.8'
 
 services:
-  fake_news_api:
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5433:5432" # Пробрасываем на 5433, чтобы не мешать твоей локальной БД
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
     build: .
-    container_name: ml_fake_news_container
+    container_name: fastapi_model
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
-    # Подключаем папку experiments из нашего компьютера в контейнер,
-    # чтобы контейнер видел нашу обученную модель model.pkl
-    volumes:
-      - ./experiments:/app/experiments
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

@@ -15,3 +15,9 @@ uvicorn
 pydantic
 pytest
 httpx
+fastapi
+uvicorn
+scikit-learn
+pydantic
+sqlalchemy
+psycopg2-binary
