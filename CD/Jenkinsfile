@@ -12,12 +12,14 @@ pipeline {
             steps {
                 script {
                     echo "Поднимаем базу данных и приложение..."
-                    // Останавливаем старые контейнеры, если они есть
-                    bat "docker-compose down -v || true"
-                    // Запускаем инфраструктуру в фоновом режиме
-                    bat "docker-compose up -d"
 
-                    // Даем PostgreSQL время на инициализацию
+                    // Windows-версия безопасной остановки старых контейнеров
+                    bat "docker-compose down -v || exit 0"
+
+                    // Запускаем инфраструктуру в фоновом режиме
+                    bat "docker-compose up --build -d"
+
+                    // Даем PostgreSQL время на запуск
                     sleep time: 10, unit: 'SECONDS'
                 }
             }
@@ -27,7 +29,7 @@ pipeline {
             steps {
                 script {
                     echo "Запуск функционального тестирования..."
-                    // Запускаем pytest внутри запущенного контейнера web
+                    // Прогоняем тесты внутри контейнера FastAPI
                     bat "docker-compose exec -T web pytest tests/"
                 }
             }
@@ -37,8 +39,8 @@ pipeline {
     post {
         always {
             echo "Очистка тестовой среды..."
-            // Гасим инфраструктуру после прогона тестов
-            bat "docker-compose down -v"
+            // Безопасная очистка (чтобы ошибка удаления не "красила" пайплайн в красный)
+            bat "docker-compose down -v || exit 0"
         }
     }
 }
