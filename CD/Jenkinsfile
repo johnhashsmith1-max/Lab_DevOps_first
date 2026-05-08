@@ -12,12 +12,15 @@ pipeline {
             steps {
                 script {
                     echo "Создаем конфигурационный файл .env на лету..."
-                    // Динамически создаем .env файл в рабочей директории Jenkins
                     writeFile file: '.env', text: '''POSTGRES_USER=admin
 POSTGRES_PASSWORD=supersecret_pass
 POSTGRES_DB=fakenews_db
 POSTGRES_HOST=db
 POSTGRES_PORT=5432'''
+
+                    echo "Принудительно убиваем зависшие контейнеры с такими же именами..."
+                    // Убиваем контейнеры напрямую через глобальный docker, если они существуют
+                    bat "docker rm -f postgres_db fastapi_model || exit 0"
 
                     echo "Поднимаем базу данных и приложение..."
                     bat "docker-compose down -v || exit 0"
