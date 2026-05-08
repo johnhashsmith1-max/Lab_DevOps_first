@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from src.predict import app
+from main import app
 
 # Создаем тестовый клиент на основе нашего FastAPI приложения
 client = TestClient(app)
