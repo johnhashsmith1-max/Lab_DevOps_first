@@ -11,12 +11,16 @@ pipeline {
         stage('Deploy Infrastructure') {
             steps {
                 script {
+                    echo "Создаем конфигурационный файл .env на лету..."
+                    // Динамически создаем .env файл в рабочей директории Jenkins
+                    writeFile file: '.env', text: '''POSTGRES_USER=admin
+POSTGRES_PASSWORD=supersecret_pass
+POSTGRES_DB=fakenews_db
+POSTGRES_HOST=db
+POSTGRES_PORT=5432'''
+
                     echo "Поднимаем базу данных и приложение..."
-
-                    // Windows-версия безопасной остановки старых контейнеров
                     bat "docker-compose down -v || exit 0"
-
-                    // Запускаем инфраструктуру в фоновом режиме
                     bat "docker-compose up --build -d"
 
                     // Даем PostgreSQL время на запуск
@@ -29,7 +33,6 @@ pipeline {
             steps {
                 script {
                     echo "Запуск функционального тестирования..."
-                    // Прогоняем тесты внутри контейнера FastAPI
                     bat "docker-compose exec -T web pytest tests/"
                 }
             }
@@ -39,7 +42,6 @@ pipeline {
     post {
         always {
             echo "Очистка тестовой среды..."
-            // Безопасная очистка (чтобы ошибка удаления не "красила" пайплайн в красный)
             bat "docker-compose down -v || exit 0"
         }
     }
