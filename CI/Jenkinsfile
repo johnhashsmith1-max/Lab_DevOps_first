@@ -5,7 +5,7 @@ pipeline {
         // Учетные данные DockerHub
         DOCKERHUB_CREDS = credentials('dockerhub_creds')
         // Твой логин и имя образа
-        IMAGE_NAME = "твой_логин_dockerhub/fakenews_model"
+        IMAGE_NAME = "tagirdpo/fakenews_model"
         IMAGE_TAG = "latest"
     }
 
