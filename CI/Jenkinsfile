@@ -2,54 +2,39 @@ pipeline {
     agent any
 
     environment {
-        // Твой логин и название репозитория, которое ты создал на DockerHub
-        DOCKERHUB_USER = 'tagirdpo'
-        IMAGE_NAME = 'devops_2026'
-        IMAGE_TAG = "${BUILD_NUMBER}"
+        // Учетные данные DockerHub
+        DOCKERHUB_CREDS = credentials('dockerhub_creds')
+        // Твой логин и имя образа
+        IMAGE_NAME = "твой_логин_dockerhub/fakenews_model"
+        IMAGE_TAG = "latest"
     }
 
     stages {
         stage('Checkout') {
             steps {
+                // Скачиваем код из репозитория
                 checkout scm
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo "Сборка Docker-образа..."
-                // Используем команду bat для запуска сборки через консоль Windows
-                bat "docker build -t ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} ."
-                // Сразу вешаем второй тег 'latest', чтобы всегда иметь метку последней версии
-                bat "docker tag ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} ${DOCKERHUB_USER}/${IMAGE_NAME}:latest"
+                script {
+                    echo "Сборка Docker образа FastAPI..."
+                    // Т.к. скрипт запускается из корня workspace, Dockerfile должен быть доступен
+                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                }
             }
         }
 
         stage('Push to DockerHub') {
             steps {
-                echo "Отправка образа в DockerHub..."
-                // Безопасно достаем логин и токен из Jenkins по ID 'DockerHub_acess_key'
-                withCredentials([usernamePassword(credentialsId: 'DockerHub_acess_key', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
-                    // Логинимся в консоли
-                    bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
-                    // Отправляем обе версии образа (с номером билда и latest)
-                    bat "docker push ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}"
-                    bat "docker push ${DOCKERHUB_USER}/${IMAGE_NAME}:latest"
+                script {
+                    echo "Авторизация и отправка образа в DockerHub..."
+                    sh "echo ${DOCKERHUB_CREDS_PSW} | docker login -u ${DOCKERHUB_CREDS_USR} --password-stdin"
+                    sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
-        }
-    }
-
-    post {
-        always {
-            // Выходим из аккаунта DockerHub в конце, чтобы не оставлять сессию
-            bat "docker logout"
-        }
-        success {
-            echo "CI Pipeline успешно завершен! Образ отправлен в DockerHub."
-        }
-        failure {
-            echo "Ошибка при выполнении CI Pipeline. Проверьте логи."
         }
     }
 }

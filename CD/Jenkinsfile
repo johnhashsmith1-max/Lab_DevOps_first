@@ -2,33 +2,43 @@ pipeline {
     agent any
 
     stages {
-        stage('Deploy Container') {
+        stage('Checkout') {
             steps {
-                echo "Запуск контейнера из свежего образа..."
-                bat "docker stop ml_fake_news_container || exit 0"
-                bat "docker rm ml_fake_news_container || exit 0"
-
-                bat "docker run -d -p 8000:8000 --name ml_fake_news_container tagirdpo/devops_2026:latest"
+                checkout scm
             }
         }
 
-        stage('Functional Testing') {
+        stage('Deploy Infrastructure') {
             steps {
-                echo "Даем серверу 5 секунд на старт..."
-                sleep time: 5, unit: 'SECONDS'
+                script {
+                    echo "Поднимаем базу данных и приложение..."
+                    // Останавливаем старые контейнеры, если они есть
+                    sh "docker-compose down -v || true"
+                    // Запускаем инфраструктуру в фоновом режиме
+                    sh "docker-compose up -d"
 
-                echo "Запуск автоматических тестов внутри контейнера..."
-                bat "docker exec ml_fake_news_container python -m pytest"
+                    // Даем PostgreSQL время на инициализацию
+                    sleep time: 10, unit: 'SECONDS'
+                }
+            }
+        }
+
+        stage('Run Functional Tests') {
+            steps {
+                script {
+                    echo "Запуск функционального тестирования..."
+                    // Запускаем pytest внутри запущенного контейнера web
+                    sh "docker-compose exec -T web pytest tests/"
+                }
             }
         }
     }
 
     post {
-        success {
-            echo "CD Pipeline успешен! Контейнер запущен и прошел все проверки."
-        }
-        failure {
-            echo "Ошибка CD Pipeline. Тесты провалены или контейнер не запустился."
+        always {
+            echo "Очистка тестовой среды..."
+            // Гасим инфраструктуру после прогона тестов
+            sh "docker-compose down -v"
         }
     }
 }
