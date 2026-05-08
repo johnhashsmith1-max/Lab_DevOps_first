@@ -26,12 +26,22 @@ pipeline {
             }
         }
 
+        //stage('Push to DockerHub') {
+        //    steps {
+        //        script {
+        //            echo "Авторизация и отправка образа в DockerHub..."
+        //            // Заменили sh на bat. В Windows cmd используем echo для передачи пароля
+        //            bat "echo %DOCKERHUB_CREDS_PSW%| docker login -u %DOCKERHUB_CREDS_USR% --password-stdin"
+        //            bat "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+        //        }
+        //    }
+        //}
         stage('Push to DockerHub') {
             steps {
                 script {
                     echo "Авторизация и отправка образа в DockerHub..."
-                    // Заменили sh на bat. В Windows cmd используем echo для передачи пароля
-                    bat "echo %DOCKERHUB_CREDS_PSW% | docker login -u %DOCKERHUB_CREDS_USR% --password-stdin"
+                    // Прямая передача флагами, чтобы обойти баги Windows CMD
+                    bat "docker login -u %DOCKERHUB_CREDS_USR% -p %DOCKERHUB_CREDS_PSW%"
                     bat "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
