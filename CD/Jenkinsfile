@@ -13,9 +13,9 @@ pipeline {
                 script {
                     echo "Поднимаем базу данных и приложение..."
                     // Останавливаем старые контейнеры, если они есть
-                    sh "docker-compose down -v || true"
+                    bat "docker-compose down -v || true"
                     // Запускаем инфраструктуру в фоновом режиме
-                    sh "docker-compose up -d"
+                    bat "docker-compose up -d"
 
                     // Даем PostgreSQL время на инициализацию
                     sleep time: 10, unit: 'SECONDS'
@@ -28,7 +28,7 @@ pipeline {
                 script {
                     echo "Запуск функционального тестирования..."
                     // Запускаем pytest внутри запущенного контейнера web
-                    sh "docker-compose exec -T web pytest tests/"
+                    bat "docker-compose exec -T web pytest tests/"
                 }
             }
         }
@@ -38,7 +38,7 @@ pipeline {
         always {
             echo "Очистка тестовой среды..."
             // Гасим инфраструктуру после прогона тестов
-            sh "docker-compose down -v"
+            bat "docker-compose down -v"
         }
     }
 }

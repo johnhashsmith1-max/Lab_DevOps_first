@@ -12,7 +12,6 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Скачиваем код из репозитория
                 checkout scm
             }
         }
@@ -21,8 +20,8 @@ pipeline {
             steps {
                 script {
                     echo "Сборка Docker образа FastAPI..."
-                    // Т.к. скрипт запускается из корня workspace, Dockerfile должен быть доступен
-                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                    // Заменили sh на bat
+                    bat "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
@@ -31,8 +30,9 @@ pipeline {
             steps {
                 script {
                     echo "Авторизация и отправка образа в DockerHub..."
-                    sh "echo ${DOCKERHUB_CREDS_PSW} | docker login -u ${DOCKERHUB_CREDS_USR} --password-stdin"
-                    sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                    // Заменили sh на bat. В Windows cmd используем echo для передачи пароля
+                    bat "echo %DOCKERHUB_CREDS_PSW% | docker login -u %DOCKERHUB_CREDS_USR% --password-stdin"
+                    bat "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
