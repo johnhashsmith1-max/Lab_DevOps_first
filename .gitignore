@@ -141,3 +141,4 @@ data/raw/*.csv
 data/processed/*.csv
 .venv/
 .env
+init_secrets.sh

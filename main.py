@@ -1,25 +1,49 @@
 import os
+import hvac
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
-# 1. Читаем доступы из переменных окружения
-DB_USER = os.getenv("POSTGRES_USER", "admin")
-DB_PASS = os.getenv("POSTGRES_PASSWORD", "supersecret_pass")
+
+# --- 1. Получение секретов из Vault ---
+def get_vault_db_credentials():
+    print("Обращаемся в Vault за секретами БД...")
+    vault_url = os.getenv('VAULT_ADDR', 'http://vault:8200')
+    vault_token = os.getenv('VAULT_TOKEN', 'myroot')
+
+    # Подключаемся к Vault
+    client = hvac.Client(url=vault_url, token=vault_token)
+
+    # Читаем секреты. Путь должен совпадать с тем, куда мы их положили в init_secrets.sh
+    response = client.secrets.kv.v2.read_secret_version(path='db_credentials')
+
+    print("Секреты успешно получены!")
+    return response['data']['data']
+
+
+# Получаем учетные данные из Vault
+credentials = get_vault_db_credentials()
+DB_USER = credentials['username']
+DB_PASS = credentials['password']
+# --------------------------------------------------
+
+# 2. Хост, порт и имя БД оставляем в переменных окружения (это не секреты)
 DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
 DB_PORT = os.getenv("POSTGRES_PORT", "5432")
 DB_NAME = os.getenv("POSTGRES_DB", "fakenews_db")
 
+# Формируем URL для подключения
 SQLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-# 2. Настраиваем SQLAlchemy
+# 3. Настраиваем SQLAlchemy
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# 3. Описываем таблицу в БД
+
+# 4. Описываем таблицу в БД
 class PredictionResult(Base):
     __tablename__ = "predictions"
     id = Column(Integer, primary_key=True, index=True)
@@ -27,10 +51,12 @@ class PredictionResult(Base):
     prediction_label = Column(String)
     probability = Column(Float)
 
+
 # Создаем таблицы
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Fake News Detector API")
+
 
 # Зависимость для получения сессии БД
 def get_db():
@@ -40,10 +66,12 @@ def get_db():
     finally:
         db.close()
 
+
 class NewsRequest(BaseModel):
     text: str
 
-# 4. Наполняем БД валидационными данными при старте
+
+# 5. Наполняем БД валидационными данными при старте
 @app.on_event("startup")
 def startup_populate_db():
     db = SessionLocal()
@@ -58,12 +86,11 @@ def startup_populate_db():
     db.close()
 
 
-# 5. Эндпоинт предсказания и взаимодействия с источником данных
+# 6. Эндпоинт предсказания
 @app.post("/predict")
 def predict_news(request: NewsRequest, db: Session = Depends(get_db)):
-    # Здесь логика твоей модели (заглушка для примера)
-    # prediction = model.predict([request.text])
-    label = "Fake"  # результат работы модели
+    # Заглушка модели
+    label = "Fake"
     prob = 0.85
 
     # Отправка результатов модели в базу данных

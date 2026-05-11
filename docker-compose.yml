@@ -2,29 +2,52 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15-alpine
-    container_name: postgres_db
-    restart: always
+    image: postgres:13
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=supersecret_pass
-      - POSTGRES_DB=fakenews_db
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydb
     ports:
-      - "5455:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d mydb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  web:
+  vault:
+    image: hashicorp/vault:latest
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "myroot"
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+
+  # Тот самый контейнер для инициализации
+  vault-init:
+    image: hashicorp/vault:latest
+    depends_on:
+      - vault
+    environment:
+      VAULT_ADDR: "http://vault:8200"
+      VAULT_TOKEN: "myroot"
+    volumes:
+      - ./init_secrets.sh:/init_secrets.sh
+    command: ["sh", "-c", "/init_secrets.sh"]
+
+  model_app:
     build: .
-    container_name: fastapi_model
-    restart: always
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
-    env_file:
-      - .env
     depends_on:
-      - db
-
-volumes:
-  postgres_data:
+      vault-init:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    environment:
+      VAULT_ADDR: "http://vault:8200"
+      VAULT_TOKEN: "myroot"
+      DB_HOST: "db"
+      POSTGRES_DB: "mydb"

@@ -21,3 +21,4 @@ scikit-learn
 pydantic
 sqlalchemy
 psycopg2-binary
+hvac
