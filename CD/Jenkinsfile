@@ -42,7 +42,7 @@ pipeline {
                 script {
                     echo "Запуск функционального тестирования..."
                     // Добавили "python -m " перед pytest
-                    bat "docker-compose exec -T web python -m pytest tests/"
+                    bat "docker-compose exec -T model_app python -m pytest tests/"
                 }
             }
         }
