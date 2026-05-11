@@ -10,25 +10,29 @@ pipeline {
 
         stage('Deploy and Test') {
             steps {
-                // 1. Запускаем всю архитектуру в фоновом режиме (Vault, Инициализатор, БД, Приложение)
-                sh 'docker-compose up -d'
+                // 1. Запускаем всю архитектуру через обычный cmd Windows
+                bat 'docker-compose up -d'
 
-                // 2. Даем сервисам время на запуск (Vault нужно время записать секреты, а БД - подняться)
-                sh 'sleep 15'
+                // 2. Даем сервисам 15 секунд на запуск через PowerShell
+                powershell 'Start-Sleep -Seconds 15'
 
-                // 3. Функциональный тест: дергаем API твоей модели
-                // Если база недоступна или пароли из Vault не подтянулись - запрос упадет
-                sh '''
-                    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:8000/predict" \
-                    -H "Content-Type: application/json" \
-                    -d '{"text": "Test news for CI/CD"}')
+                // 3. Функциональный тест: дергаем API твоей модели через PowerShell
+                powershell '''
+                    try {
+                        # Делаем POST-запрос
+                        $response = Invoke-WebRequest -Uri "http://localhost:8000/predict" -Method Post -ContentType "application/json" -Body '{"text": "Test news for CI/CD"}' -UseBasicParsing
 
-                    if [ "$HTTP_STATUS" -eq 200 ]; then
-                        echo "Успешно: Модель ответила 200 OK. Секреты получены, БД работает!"
-                    else
-                        echo "Ошибка: API вернул статус $HTTP_STATUS. Тест провален."
+                        # Проверяем статус-код
+                        if ($response.StatusCode -eq 200) {
+                            Write-Host "Успешно: Модель ответила 200 OK. Секреты получены, БД работает!"
+                        } else {
+                            Write-Host "Ошибка: API вернул статус $($response.StatusCode). Тест провален."
+                            exit 1
+                        }
+                    } catch {
+                        Write-Host "Произошла ошибка при обращении к API (возможно, контейнер упал): $_"
                         exit 1
-                    fi
+                    }
                 '''
             }
         }
