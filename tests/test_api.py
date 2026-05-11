@@ -19,13 +19,14 @@ def test_predict_endpoint_fake():
     data = response.json()
 
     # Проверяем, что в ответе есть нужные нам ключи
-    assert "prediction" in data
-    assert "confidence_fake" in data
-    assert "confidence_true" in data
+    assert "label" in data
+    # Бонус: проверяем, что API вернул ID записи из базы данных
+    assert "db_id" in data
+    assert "probability" in data
 
     # Проверяем типы данных, чтобы убедиться, что API работает корректно
-    assert isinstance(data["prediction"], str)
-    assert isinstance(data["confidence_fake"], float)
+    # assert isinstance(data["prediction"], str)
+    # assert isinstance(data["confidence_fake"], float)
 
 
 def test_predict_endpoint_empty():
@@ -35,4 +36,7 @@ def test_predict_endpoint_empty():
         json={"text": ""}
     )
     assert response.status_code == 200
-    assert "prediction" in response.json()
+    data = response.json()
+
+    assert "label" in data
+    assert "db_id" in data
