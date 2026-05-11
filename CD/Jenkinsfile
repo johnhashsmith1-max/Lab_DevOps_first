@@ -41,7 +41,7 @@ pipeline {
             steps {
                 script {
                     echo "Запуск функционального тестирования..."
-                    bat "docker-compose exec -T model_app python -m pytest tests/"
+                    bat 'docker exec lab3_model_app python -m pytest tests/'
                 }
             }
         }
