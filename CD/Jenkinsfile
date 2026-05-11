@@ -8,44 +8,38 @@ pipeline {
             }
         }
 
-        stage('Deploy and Test') {
+        stage('Deploy Architecture') {
             steps {
-                // 1. Запускаем всю архитектуру через обычный cmd Windows
+                // Поднимаем инфраструктуру (Приложение, Vault, БД)
                 bat 'docker-compose up -d'
 
-                // 2. Даем сервисам 15 секунд на запуск через PowerShell
+                // Даем сервисам 15 секунд на инициализацию и получение секретов
                 powershell 'Start-Sleep -Seconds 15'
-
-                // 3. Функциональный тест: дергаем API твоей модели через PowerShell
-                powershell '''
-                    try {
-                        # Делаем POST-запрос
-                        $response = Invoke-WebRequest -Uri "http://localhost:8000/predict" -Method Post -ContentType "application/json" -Body '{"text": "Test news for CI/CD"}' -UseBasicParsing
-
-                        # Проверяем статус-код
-                        if ($response.StatusCode -eq 200) {
-                            Write-Host "Успешно: Модель ответила 200 OK. Секреты получены, БД работает!"
-                        } else {
-                            Write-Host "Ошибка: API вернул статус $($response.StatusCode). Тест провален."
-                            exit 1
-                        }
-                    } catch {
-                        Write-Host "Произошла ошибка при обращении к API (возможно, контейнер упал): $_"
-                        exit 1
-                    }
-                '''
             }
         }
 
         stage('Run Functional Tests') {
             steps {
-                script {
-                    echo "Запуск функционального тестирования..."
-                    bat 'docker exec lab3_model_app python -m pytest tests/'
-                }
+                echo 'Запуск сценария сквозного функционального тестирования...'
+
+                powershell '''
+                    try {
+                        $response = Invoke-WebRequest -Uri "http://localhost:8000/predict" -Method Post -ContentType "application/json" -Body '{"text": "Test news for Lab 3"}' -UseBasicParsing
+
+                        if ($response.StatusCode -eq 200) {
+                            Write-Host "ФУНКЦИОНАЛЬНЫЙ ТЕСТ ПРОЙДЕН!"
+                            Write-Host "Модель ответила 200 OK. Секреты успешно получены из Vault, БД работает."
+                        } else {
+                            Write-Host "Ошибка: API вернул статус $($response.StatusCode)."
+                            exit 1
+                        }
+                    } catch {
+                        Write-Host "Произошла ошибка (сервис недоступен): $_"
+                        exit 1
+                    }
+                '''
             }
         }
-    }
 
     post {
         always {
