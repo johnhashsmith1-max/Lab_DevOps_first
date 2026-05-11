@@ -1,4 +1,5 @@
 import os
+import time
 import hvac
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
@@ -7,20 +8,29 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
 
-# --- 1. Получение секретов из Vault ---
+# --- 1. Получение секретов из Vault с Retry-логикой ---
 def get_vault_db_credentials():
     print("Обращаемся в Vault за секретами БД...")
     vault_url = os.getenv('VAULT_ADDR', 'http://vault:8200')
     vault_token = os.getenv('VAULT_TOKEN', 'myroot')
 
-    # Подключаемся к Vault
     client = hvac.Client(url=vault_url, token=vault_token)
 
-    # Читаем секреты. Путь должен совпадать с тем, куда мы их положили в init_secrets.sh
-    response = client.secrets.kv.v2.read_secret_version(path='db_credentials')
+    # Добавляем цикл из 5 попыток для защиты от плавающих ошибок DNS
+    for attempt in range(5):
+        try:
+            # raise_on_deleted_version=True убирает желтый DeprecationWarning из логов
+            response = client.secrets.kv.v2.read_secret_version(
+                path='db_credentials',
+                raise_on_deleted_version=True
+            )
+            print("Секреты успешно получены!")
+            return response['data']['data']
+        except Exception as e:
+            print(f"Ошибка сети/DNS (попытка {attempt + 1}/5): {e}")
+            time.sleep(2)
 
-    print("Секреты успешно получены!")
-    return response['data']['data']
+    raise Exception("Не удалось получить секреты из Vault после 5 попыток")
 
 
 # Получаем учетные данные из Vault
@@ -29,7 +39,7 @@ DB_USER = credentials['username']
 DB_PASS = credentials['password']
 # --------------------------------------------------
 
-# 2. Хост, порт и имя БД оставляем в переменных окружения (это не секреты)
+# 2. Хост, порт и имя БД оставляем в переменных окружения
 DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
 DB_PORT = os.getenv("POSTGRES_PORT", "5432")
 DB_NAME = os.getenv("POSTGRES_DB", "fakenews_db")
@@ -89,11 +99,9 @@ def startup_populate_db():
 # 6. Эндпоинт предсказания
 @app.post("/predict")
 def predict_news(request: NewsRequest, db: Session = Depends(get_db)):
-    # Заглушка модели
     label = "Fake"
     prob = 0.85
 
-    # Отправка результатов модели в базу данных
     db_record = PredictionResult(news_text=request.text, prediction_label=label, probability=prob)
     db.add(db_record)
     db.commit()
