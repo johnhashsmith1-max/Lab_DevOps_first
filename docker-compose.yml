@@ -1,5 +1,6 @@
 services:
   db:
+    container_name: lab3_db
     image: postgres:13
     environment:
       POSTGRES_USER: myuser
@@ -14,6 +15,7 @@ services:
       retries: 5
 
   vault:
+    container_name: lab3_vault
     image: hashicorp/vault:latest
     ports:
       - "8200:8200"
@@ -24,11 +26,13 @@ services:
       - IPC_LOCK
 
   vault-init:
+    container_name: lab3_vault_init
     image: hashicorp/vault:latest
     depends_on:
       - vault
     environment:
-      VAULT_ADDR: "http://vault:8200"
+      # Обращаемся по новому жесткому имени
+      VAULT_ADDR: "http://lab3_vault:8200"
       VAULT_TOKEN: "myroot"
     command:
       - "sh"
@@ -40,6 +44,7 @@ services:
         echo "Секреты успешно загружены в Vault!"
 
   model_app:
+    container_name: lab3_model_app
     build: .
     ports:
       - "8000:8000"
@@ -48,13 +53,9 @@ services:
         condition: service_completed_successfully
       db:
         condition: service_healthy
-    # --- Жесткая привязка хостов (обход бага DNS) ---
-    links:
-      - vault
-      - db
-    # -----------------------------------------------------------
     environment:
-      VAULT_ADDR: "http://vault:8200"
+      # Задаем новые пути для переменных
+      VAULT_ADDR: "http://lab3_vault:8200"
       VAULT_TOKEN: "myroot"
-      DB_HOST: "db"
+      DB_HOST: "lab3_db"
       POSTGRES_DB: "mydb"

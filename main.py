@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker, Session
 # --- 1. Получение секретов из Vault с Retry-логикой ---
 def get_vault_db_credentials():
     print("Обращаемся в Vault за секретами БД...")
-    vault_url = os.getenv('VAULT_ADDR', 'http://vault:8200')
+    vault_url = os.getenv('VAULT_ADDR', 'http://lab3_vault:8200')
     vault_token = os.getenv('VAULT_TOKEN', 'myroot')
 
     client = hvac.Client(url=vault_url, token=vault_token)
@@ -40,7 +40,7 @@ DB_PASS = credentials['password']
 # --------------------------------------------------
 
 # 2. Хост, порт и имя БД оставляем в переменных окружения
-DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
+DB_HOST = os.getenv("POSTGRES_HOST", "lab3_db")
 DB_PORT = os.getenv("POSTGRES_PORT", "5432")
 DB_NAME = os.getenv("POSTGRES_DB", "fakenews_db")
 
