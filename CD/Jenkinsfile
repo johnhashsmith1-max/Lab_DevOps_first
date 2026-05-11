@@ -36,7 +36,8 @@ POSTGRES_PORT=5432'''
             steps {
                 script {
                     echo "Запуск функционального тестирования..."
-                    bat "docker-compose exec -T web pytest tests/"
+                    // Добавили "python -m " перед pytest
+                    bat "docker-compose exec -T web python -m pytest tests/"
                 }
             }
         }
