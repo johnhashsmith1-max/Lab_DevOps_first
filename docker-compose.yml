@@ -48,6 +48,11 @@ services:
         condition: service_completed_successfully
       db:
         condition: service_healthy
+    # --- Жесткая привязка хостов (обход бага DNS) ---
+    links:
+      - vault
+      - db
+    # -----------------------------------------------------------
     environment:
       VAULT_ADDR: "http://vault:8200"
       VAULT_TOKEN: "myroot"
