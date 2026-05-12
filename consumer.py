@@ -1,4 +1,10 @@
 import os
+# --- БЛОКИРОВКА ПРОКСИ ---
+# Жестко удаляем системные прокси, просочившиеся из Jenkins,
+# чтобы Python искал Vault только в локальной сети Docker
+for key in ['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY']:
+    os.environ.pop(key, None)
+
 import time
 import json
 import hvac
@@ -7,10 +13,9 @@ from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-
 # --- 1. Получение секретов из Vault ---
 def get_vault_db_credentials():
-    print("Consumer: Ждем 10 секунд для стабилизации внутренней сети Docker...")
+    print("Consumer: Ждем 10 секунд для стабилизации сети...")
     time.sleep(10)
     print("Consumer: Обращаемся в Vault за секретами БД...")
 
@@ -19,18 +24,15 @@ def get_vault_db_credentials():
 
     for attempt in range(5):
         try:
-            # ВАЖНО: Инициализируем клиент ЗДЕСЬ, внутри цикла.
-            # Это принудительно сбрасывает кэш DNS при каждой попытке!
             client = hvac.Client(url=vault_url, token=vault_token)
-
             response = client.secrets.kv.v2.read_secret_version(
                 path='db_credentials', raise_on_deleted_version=True
             )
             print("Consumer: Секреты успешно получены!")
             return response['data']['data']
         except Exception as e:
-            print(f"Consumer: Ошибка сети/DNS Vault (попытка {attempt + 1}/5): {e}")
-            time.sleep(5)  # Пауза между попытками
+            print(f"Consumer: Ошибка подключения к Vault (попытка {attempt + 1}/5): {e}")
+            time.sleep(5)
     raise Exception("Не удалось получить секреты из Vault")
 
 
@@ -38,7 +40,7 @@ def get_vault_db_credentials():
 credentials = get_vault_db_credentials()
 DB_USER = credentials['username']
 DB_PASS = credentials['password']
-DB_HOST = os.getenv("DB_HOST", "lab3_db")
+DB_HOST = os.getenv("DB_HOST", "db")
 DB_PORT = os.getenv("POSTGRES_PORT", "5432")
 DB_NAME = os.getenv("POSTGRES_DB", "mydb")
 
@@ -47,7 +49,6 @@ engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-
 class PredictionResult(Base):
     __tablename__ = "predictions"
     id = Column(Integer, primary_key=True, index=True)
@@ -55,16 +56,13 @@ class PredictionResult(Base):
     prediction_label = Column(String)
     probability = Column(Float)
 
-
 Base.metadata.create_all(bind=engine)
 
 # --- 3. Настройка Kafka Consumer ---
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka:29092")
 
-
 def start_consumer():
     print(f"Consumer: Подключение к Kafka по адресу {KAFKA_BROKER}...")
-    # Даем Kafka время на полную инициализацию
     time.sleep(10)
 
     consumer = KafkaConsumer(
