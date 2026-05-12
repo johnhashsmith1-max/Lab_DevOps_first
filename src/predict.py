@@ -1,37 +1,49 @@
+import os
+import json
 from fastapi import FastAPI
 from pydantic import BaseModel
-import joblib
-import uvicorn
+from kafka import KafkaProducer
 
-# Инициализация приложения
-app = FastAPI(title="Fake News Detector API")
+app = FastAPI(title="Fake News Detector API (Kafka Producer)")
 
-# Загрузка обученной модели при старте сервера
-model = joblib.load('experiments/model.pkl')
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka:29092")
+producer = None
 
+@app.on_event("startup")
+def startup_event():
+    global producer
+    print(f"API: Подключение к Kafka ({KAFKA_BROKER})...")
+    import time
+    for _ in range(5):
+        try:
+            producer = KafkaProducer(
+                bootstrap_servers=[KAFKA_BROKER],
+                value_serializer=lambda v: json.dumps(v).encode('utf-8')
+            )
+            print("API: Успешно подключен к Kafka!")
+            break
+        except Exception as e:
+            print(f"API: Ошибка подключения к Kafka, повторяем... {e}")
+            time.sleep(3)
 
-# Схема входящих данных (ожидаем текст новости)
-class NewsItem(BaseModel):
+class NewsRequest(BaseModel):
     text: str
 
-
-# Создаем метод API
 @app.post("/predict")
-def predict_news(item: NewsItem):
-    # Делаем предсказание. Модель ожидает список, поэтому оборачиваем текст в []
-    prediction = model.predict([item.text])[0]
-    probability = model.predict_proba([item.text])[0]
+def predict_news(request: NewsRequest):
+    # Здесь должна быть твоя логика предсказания модели
+    # Оставляем заглушку или вставь сюда свой реальный инференс
+    label = "Fake News"
+    prob_fake = 0.8915
 
-    # Расшифровываем результат (0 - Фейк, 1 - Правда)
-    result = "True News" if prediction == 1 else "Fake News"
-
-    return {
-        "prediction": result,
-        "confidence_fake": round(float(probability[0]), 4),
-        "confidence_true": round(float(probability[1]), 4)
+    msg = {
+        "text": request.text,
+        "label": label,
+        "probability": prob_fake
     }
 
+    if producer:
+        producer.send('predictions_topic', value=msg)
+        producer.flush() 
 
-if __name__ == "__main__":
-    # Запуск локального веб-сервера
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    return {"status": "queued", "message": "Prediction sent to Kafka", "data": msg}
