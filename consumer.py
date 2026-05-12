@@ -10,13 +10,19 @@ from sqlalchemy.orm import sessionmaker
 
 # --- 1. Получение секретов из Vault ---
 def get_vault_db_credentials():
+    print("Consumer: Ждем 10 секунд для стабилизации внутренней сети Docker...")
+    time.sleep(10)
     print("Consumer: Обращаемся в Vault за секретами БД...")
-    vault_url = os.getenv('VAULT_ADDR', 'http://lab3_vault:8200')
+
+    vault_url = os.getenv('VAULT_ADDR', 'http://vault:8200')
     vault_token = os.getenv('VAULT_TOKEN', 'myroot')
-    client = hvac.Client(url=vault_url, token=vault_token)
 
     for attempt in range(5):
         try:
+            # ВАЖНО: Инициализируем клиент ЗДЕСЬ, внутри цикла.
+            # Это принудительно сбрасывает кэш DNS при каждой попытке!
+            client = hvac.Client(url=vault_url, token=vault_token)
+
             response = client.secrets.kv.v2.read_secret_version(
                 path='db_credentials', raise_on_deleted_version=True
             )
@@ -24,7 +30,7 @@ def get_vault_db_credentials():
             return response['data']['data']
         except Exception as e:
             print(f"Consumer: Ошибка сети/DNS Vault (попытка {attempt + 1}/5): {e}")
-            time.sleep(3)
+            time.sleep(5)  # Пауза между попытками
     raise Exception("Не удалось получить секреты из Vault")
 
 
