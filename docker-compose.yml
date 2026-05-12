@@ -31,7 +31,7 @@ services:
     depends_on:
       - vault
     environment:
-      VAULT_ADDR: "http://vault:8200"
+      VAULT_ADDR: "http://lab4_vault:8200"
       VAULT_TOKEN: "myroot"
     command:
       - "sh"
@@ -72,7 +72,7 @@ services:
     depends_on:
       - kafka
     environment:
-      KAFKA_BROKER: "kafka:29092"
+      KAFKA_BROKER: "lab4_kafka:29092"
 
   consumer_app:
     container_name: lab4_consumer_app
@@ -86,8 +86,8 @@ services:
       kafka:
         condition: service_started
     environment:
-      VAULT_ADDR: "http://vault:8200"
+      VAULT_ADDR: "http://lab4_vault:8200"
       VAULT_TOKEN: "myroot"
-      DB_HOST: "db"
+      DB_HOST: "lab4_db"
       POSTGRES_DB: "mydb"
-      KAFKA_BROKER: "kafka:29092"
+      KAFKA_BROKER: "lab4_kafka:29092"
