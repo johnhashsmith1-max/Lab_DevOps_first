@@ -30,8 +30,16 @@ services:
     environment:
       VAULT_ADDR: "http://vault:8200"
       VAULT_TOKEN: "myroot"
-    command: >
-      sh -c "sleep 5 && vault secrets enable -path=secret kv-v2 && vault kv put secret/db_credentials username=myuser password=mypassword && echo 'Секреты успешно загружены в Vault!'"
+      NO_PROXY: "*"
+      no_proxy: "*"
+    command:
+      - "sh"
+      - "-c"
+      - |
+        sleep 5
+        vault secrets enable -path=secret kv-v2
+        vault kv put secret/db_credentials username=myuser password=mypassword
+        echo "Секреты успешно загружены в Vault!"
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
@@ -61,6 +69,8 @@ services:
       - kafka
     environment:
       KAFKA_BROKER: "kafka:29092"
+      NO_PROXY: "*"
+      no_proxy: "*"
 
   consumer_app:
     build: .
@@ -79,3 +89,5 @@ services:
       DB_HOST: "db"
       POSTGRES_DB: "mydb"
       KAFKA_BROKER: "kafka:29092"
+      NO_PROXY: "*"
+      no_proxy: "*"
