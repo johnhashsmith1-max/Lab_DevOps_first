@@ -40,7 +40,7 @@ pipeline {
                             Write-Host $consumerLogs
 
                             # Ищем ключевую фразу успешной записи в логах
-                            if ($consumerLogs -match "Данные успешно сохранены в БД!") {
+                            if ($consumerLogs -match "SUCCESS_DB_WRITE") {
                                 Write-Host "ФУНКЦИОНАЛЬНЫЙ ТЕСТ ПРОЙДЕН УСПЕШНО!"
                                 Write-Host "Интеграция Kafka Producer и Consumer работает корректно."
                             } else {

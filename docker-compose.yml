@@ -77,7 +77,7 @@ services:
   consumer_app:
     container_name: lab4_consumer_app
     build: .
-    command: ["python", "consumer.py"]
+    command: ["python", "-u", "consumer.py"] # Добавили флаг -u для моментального вывода логов
     depends_on:
       vault-init:
         condition: service_completed_successfully
@@ -86,6 +86,7 @@ services:
       kafka:
         condition: service_started
     environment:
+      PYTHONUNBUFFERED: 1 # Гарантирует отключение буфера
       VAULT_ADDR: "http://lab4_vault:8200"
       VAULT_TOKEN: "myroot"
       DB_HOST: "lab4_db"

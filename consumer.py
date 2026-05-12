@@ -84,7 +84,7 @@ def start_consumer():
             )
             db.add(db_record)
             db.commit()
-            print("Consumer: Данные успешно сохранены в БД!")
+            print("Consumer: SUCCESS_DB_WRITE")
     finally:
         db.close()
 
