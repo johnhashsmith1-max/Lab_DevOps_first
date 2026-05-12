@@ -10,8 +10,8 @@ pipeline {
 
         stage('Deploy Architecture') {
             steps {
-                // Поднимаем инфраструктуру (Приложение, Vault, БД)
-                bat 'docker-compose up -d'
+                // Поднимаем инфраструктуру (Приложение, Vault, БД) с принудительной ПЕРЕСБОРКОЙ
+                bat 'docker-compose up --build -d'
 
                 // Даем сервисам 15 секунд на инициализацию и получение секретов
                 powershell 'Start-Sleep -Seconds 15'
