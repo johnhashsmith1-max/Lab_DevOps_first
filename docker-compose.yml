@@ -65,6 +65,9 @@ services:
       - kafkabroker
     environment:
       KAFKA_BROKER: "kafkabroker:29092"
+      # Отключаем прокси для внутренних запросов
+      NO_PROXY: "*"
+      no_proxy: "*"
 
   consumerapp:
     build: .
@@ -83,3 +86,6 @@ services:
       DB_HOST: "pgdatabase"
       POSTGRES_DB: "mydb"
       KAFKA_BROKER: "kafkabroker:29092"
+      # Отключаем прокси для внутренних запросов
+      NO_PROXY: "*"
+      no_proxy: "*"
