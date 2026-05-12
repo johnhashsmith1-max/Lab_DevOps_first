@@ -20,8 +20,9 @@ pipeline {
 
         stage('Run Functional Tests') {
             steps {
-                echo 'Запуск асинхронного функционального тестирования (API -> Kafka -> Consumer -> Vault -> DB)...'
+                echo 'Запуск асинхронного функционального тестирования (API -> Kafka -> Consumer -> Vault -> DB'
 
+                // Это и есть наш тест инфраструктуры и взаимодействия с хранилищем
                 powershell '''
                     try {
                         Write-Host "1. Отправка POST-запроса к API (Producer)..."
@@ -51,11 +52,12 @@ pipeline {
                             exit 1
                         }
                     } catch {
-                        Write-Host "Произошла критическая ошибка при тестировании: $_"
+                        Write-Host "Произошла ошибка (сервис недоступен): $_"
                         exit 1
                     }
                 '''
             }
+        }
     }
 
     post {
