@@ -1,6 +1,15 @@
+version: '3.8'
+
+networks:
+  devopsnet:
+    name: devopsnet # фиксируем имя сети без подчеркиваний
+    driver: bridge
+
 services:
-  pgdatabase:
+  db:
     image: postgres:13
+    networks:
+      - devopsnet
     environment:
       POSTGRES_USER: myuser
       POSTGRES_PASSWORD: mypassword
@@ -13,20 +22,24 @@ services:
       timeout: 5s
       retries: 5
 
-  vaultserver:
+  vault:
     image: hashicorp/vault:latest
+    networks:
+      - devopsnet
     ports:
       - "8200:8200"
     environment:
       VAULT_DEV_ROOT_TOKEN_ID: "myroot"
       VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
 
-  vaultinit:
+  vault-init:
     image: hashicorp/vault:latest
+    networks:
+      - devopsnet
     depends_on:
-      - vaultserver
+      - vault
     environment:
-      VAULT_ADDR: "http://vaultserver:8200"
+      VAULT_ADDR: "http://vault:8200"
       VAULT_TOKEN: "myroot"
     command:
       - "sh"
@@ -37,55 +50,57 @@ services:
         vault kv put secret/db_credentials username=myuser password=mypassword
         echo "Секреты успешно загружены в Vault!"
 
-  zookeeperserver:
+  zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
+    networks:
+      - devopsnet
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
 
-  kafkabroker:
+  kafka:
     image: confluentinc/cp-kafka:7.4.0
+    networks:
+      - devopsnet
     depends_on:
-      - zookeeperserver
+      - zookeeper
     ports:
       - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeperserver:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafkabroker:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-  modelapp:
+  model_app:
     build: .
+    networks:
+      - devopsnet
     ports:
       - "8000:8000"
     depends_on:
-      - kafkabroker
+      - kafka
     environment:
-      KAFKA_BROKER: "kafkabroker:29092"
-      # Отключаем прокси для внутренних запросов
-      NO_PROXY: "*"
-      no_proxy: "*"
+      KAFKA_BROKER: "kafka:29092"
 
-  consumerapp:
+  consumer_app:
     build: .
     command: ["python", "-u", "consumer.py"]
+    networks:
+      - devopsnet
     depends_on:
-      vaultinit:
+      vault-init:
         condition: service_completed_successfully
-      pgdatabase:
+      db:
         condition: service_healthy
-      kafkabroker:
+      kafka:
         condition: service_started
     environment:
       PYTHONUNBUFFERED: 1
-      VAULT_ADDR: "http://vaultserver:8200"
+      VAULT_ADDR: "http://vault:8200"
       VAULT_TOKEN: "myroot"
-      DB_HOST: "pgdatabase"
+      DB_HOST: "db"
       POSTGRES_DB: "mydb"
-      KAFKA_BROKER: "kafkabroker:29092"
-      # Отключаем прокси для внутренних запросов
-      NO_PROXY: "*"
-      no_proxy: "*"
+      KAFKA_BROKER: "kafka:29092"
