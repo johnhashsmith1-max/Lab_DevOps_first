@@ -20,27 +20,42 @@ pipeline {
 
         stage('Run Functional Tests') {
             steps {
-                echo 'Запуск сценария сквозного функционального тестирования...'
+                echo 'Запуск асинхронного функционального тестирования (API -> Kafka -> Consumer -> Vault -> DB)...'
 
-                // Это и есть наш тест инфраструктуры и взаимодействия с хранилищем
                 powershell '''
                     try {
-                        $response = Invoke-WebRequest -Uri "http://localhost:8000/predict" -Method Post -ContentType "application/json" -Body '{"text": "Test news for Lab 3"}' -UseBasicParsing
+                        Write-Host "1. Отправка POST-запроса к API (Producer)..."
+                        $response = Invoke-WebRequest -Uri "http://localhost:8000/predict" -Method Post -ContentType "application/json" -Body '{"text": "Test async Kafka news"}' -UseBasicParsing
 
                         if ($response.StatusCode -eq 200) {
-                            Write-Host "ФУНКЦИОНАЛЬНЫЙ ТЕСТ ПРОЙДЕН!"
-                            Write-Host "Модель ответила 200 OK. Секреты успешно получены из Vault, БД работает."
+                            Write-Host "API ответил 200 OK. Сообщение успешно передано брокеру Kafka."
+
+                            Write-Host "2. Даем Consumer'у 10 секунд на извлечение секретов из Vault, чтение топика Kafka и запись в БД..."
+                            Start-Sleep -Seconds 10
+
+                            Write-Host "3. Проверка логов lab4_consumer_app..."
+                            # Считываем логи контейнера
+                            $consumerLogs = docker logs lab4_consumer_app 2>&1
+                            Write-Host $consumerLogs
+
+                            # Ищем ключевую фразу успешной записи в логах
+                            if ($consumerLogs -match "Данные успешно сохранены в БД!") {
+                                Write-Host "ФУНКЦИОНАЛЬНЫЙ ТЕСТ ПРОЙДЕН УСПЕШНО!"
+                                Write-Host "Интеграция Kafka Producer и Consumer работает корректно."
+                            } else {
+                                Write-Host "Ошибка тестирования: В логах Consumer нет подтверждения успешной обработки сообщения из Kafka."
+                                exit 1
+                            }
                         } else {
                             Write-Host "Ошибка: API вернул статус $($response.StatusCode)."
                             exit 1
                         }
                     } catch {
-                        Write-Host "Произошла ошибка (сервис недоступен): $_"
+                        Write-Host "Произошла критическая ошибка при тестировании: $_"
                         exit 1
                     }
                 '''
             }
-        }
     }
 
     post {
