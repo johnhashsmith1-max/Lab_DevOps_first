@@ -1,5 +1,4 @@
-FROM python: 3.11-slim
-# 3.14
+FROM python:3.11-slim
 
 # Устанавливаем рабочую директорию внутри контейнера
 WORKDIR /app
