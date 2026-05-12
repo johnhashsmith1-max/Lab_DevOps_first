@@ -34,9 +34,9 @@ pipeline {
                             Write-Host "2. Даем Consumer'у 10 секунд на извлечение секретов из Vault, чтение топика Kafka и запись в БД..."
                             Start-Sleep -Seconds 10
 
-                            Write-Host "3. Проверка логов lab4_consumer_app..."
-                            # Считываем логи контейнера
-                            $consumerLogs = docker logs lab4_consumer_app 2>&1
+                            Write-Host "3. Проверка логов сервиса consumer_app..."
+                            # Считываем логи через docker-compose по имени сервиса
+                            $consumerLogs = docker-compose logs consumer_app 2>&1
                             Write-Host $consumerLogs
 
                             # Ищем ключевую фразу успешной записи в логах
