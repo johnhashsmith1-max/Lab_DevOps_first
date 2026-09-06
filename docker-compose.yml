@@ -67,6 +67,8 @@ services:
       - "8000:8000"
     depends_on:
       - kafka
+    links:
+      - kafka
     environment:
       KAFKA_BROKER: "kafka:29092"
       NO_PROXY: "*"

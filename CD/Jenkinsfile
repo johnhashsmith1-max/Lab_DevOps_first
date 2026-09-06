@@ -24,16 +24,31 @@ pipeline {
 
                 powershell '''
                     try {
-                        Write-Host "1. Отправка POST-запроса к API (Producer)..."
-                        $response = Invoke-WebRequest -Uri "http://localhost:8000/predict" -Method Post -ContentType "application/json" -Body '{"text": "Test async Kafka news"}' -UseBasicParsing
+                        Write-Host "1. Ожидание готовности API (до 15 секунд)..."
+                        $apiReady = $false
+                        for ($k = 1; $k -le 8; $k++) {
+                            try {
+                                $check = Invoke-WebRequest -Uri "http://localhost:8000/docs" -Method Get -UseBasicParsing -TimeoutSec 2
+                                if ($check.StatusCode -eq 200) {
+                                    $apiReady = $true
+                                    break
+                                }
+                            } catch {
+                                Start-Sleep -Seconds 2
+                            }
+                        }
 
-                        if ($response.StatusCode -ne 200) {
-                            Write-Host "Ошибка: API вернул статус $($response.StatusCode)."
+                        if (-not $apiReady) {
+                            Write-Host "ОШИБКА: API сервис не запустился на порту 8000! Вывод логов model_app:"
+                            docker-compose logs model_app
                             exit 1
                         }
 
-                        Write-Host "API ответил 200 OK. Сообщение отправлено в Kafka."
-                        Write-Host "2. Ожидание обработки сообщения сервисом Consumer (до 30 секунд)..."
+                        Write-Host "API готов. Отправка POST-запроса к API (Producer)..."
+                        $response = Invoke-WebRequest -Uri "http://localhost:8000/predict" -Method Post -ContentType "application/json" -Body '{"text": "Test async Kafka news"}' -UseBasicParsing
+
+                        Write-Host "API ответил 200 OK. Сообщение отправлено брокеру Kafka."
+                        Write-Host "2. Ожидание обработки Consumer'ом (до 30 секунд)..."
 
                         $success = $false
                         for ($i = 1; $i -le 15; $i++) {
@@ -58,7 +73,9 @@ pipeline {
                             exit 1
                         }
                     } catch {
-                        Write-Host "Произошла ошибка: $_"
+                        Write-Host "Произошла ошибка тестирования: $_"
+                        Write-Host "--- Логи всех контейнеров ---"
+                        docker-compose logs
                         exit 1
                     }
                 '''
