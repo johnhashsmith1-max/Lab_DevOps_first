@@ -74,7 +74,7 @@ services:
 
   consumer_app:
     build: .
-    command: ["python", "-u", "consumer.py"]
+    command: [ "python", "-u", "consumer.py" ]
     depends_on:
       vault-init:
         condition: service_completed_successfully
@@ -82,12 +82,14 @@ services:
         condition: service_healthy
       kafka:
         condition: service_started
+    links:
+      - vault
+      - db
+      - kafka
     environment:
-      PYTHONUNBUFFERED: 1
+      PYTHON UNBUFFERED: 1
       VAULT_ADDR: "http://vault:8200"
       VAULT_TOKEN: "myroot"
       DB_HOST: "db"
       POSTGRES_DB: "mydb"
       KAFKA_BROKER: "kafka:29092"
-      NO_PROXY: "*"
-      no_proxy: "*"
