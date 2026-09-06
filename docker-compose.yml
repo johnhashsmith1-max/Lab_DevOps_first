@@ -1,8 +1,15 @@
 version: '3.8'
 
+networks:
+  lab_net:
+    driver: bridge
+
 services:
   db:
     image: postgres:13
+    container_name: db
+    networks:
+      - lab_net
     environment:
       POSTGRES_USER: myuser
       POSTGRES_PASSWORD: mypassword
@@ -17,6 +24,9 @@ services:
 
   vault:
     image: hashicorp/vault:latest
+    container_name: vault
+    networks:
+      - lab_net
     ports:
       - "8200:8200"
     environment:
@@ -25,9 +35,10 @@ services:
 
   vault-init:
     image: hashicorp/vault:latest
+    container_name: vault-init
+    networks:
+      - lab_net
     depends_on:
-      - vault
-    links:
       - vault
     environment:
       VAULT_ADDR: "http://vault:8200"
@@ -43,12 +54,18 @@ services:
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    networks:
+      - lab_net
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
 
   kafka:
     image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    networks:
+      - lab_net
     depends_on:
       - zookeeper
     ports:
@@ -63,17 +80,21 @@ services:
 
   model_app:
     build: .
+    container_name: model_app
+    networks:
+      - lab_net
     ports:
       - "8000:8000"
     depends_on:
-      - kafka
-    links:
       - kafka
     environment:
       KAFKA_BROKER: "kafka:29092"
 
   consumer_app:
     build: .
+    container_name: consumer_app
+    networks:
+      - lab_net
     command: [ "python", "-u", "consumer.py" ]
     depends_on:
       vault:
@@ -84,10 +105,6 @@ services:
         condition: service_healthy
       kafka:
         condition: service_started
-    links:
-      - vault
-      - db
-      - kafka
     environment:
       PYTHONUNBUFFERED: 1
       VAULT_ADDR: "http://vault:8200"

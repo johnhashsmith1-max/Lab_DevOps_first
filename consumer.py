@@ -1,25 +1,16 @@
 import os
+# --- БЛОКИРОВКА СИСТЕМНЫХ ПРОКСИ ---
 for key in ['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY']:
     os.environ.pop(key, None)
 
 import time
 import json
-import socket
-import hvac
 import requests
+import hvac
 from kafka import KafkaConsumer
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-
-# --- ГЛОБАЛЬНЫЙ ПАТЧ ДЛЯ ОБХОДА БАГА DOCKER DNS (Errno -5) ---
-old_getaddrinfo = socket.getaddrinfo
-def new_getaddrinfo(*args, **kwargs):
-    responses = old_getaddrinfo(*args, **kwargs)
-    ipv4_only = [res for res in responses if res[0] == socket.AF_INET]
-    return ipv4_only if ipv4_only else responses
-socket.getaddrinfo = new_getaddrinfo
-# -----------------------------------------------------------
 
 def get_vault_db_credentials():
     time.sleep(3)
@@ -42,6 +33,7 @@ def get_vault_db_credentials():
             print(f"Consumer: Ошибка подключения к Vault: {e}")
             time.sleep(3)
     raise Exception("Не удалось получить секреты из Vault")
+
 
 credentials = get_vault_db_credentials()
 DB_USER = credentials['username']
@@ -95,6 +87,7 @@ def start_consumer():
             print("Consumer: SUCCESS_DB_WRITE")
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     start_consumer()
