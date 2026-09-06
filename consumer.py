@@ -1,10 +1,10 @@
 import os
-# --- БЛОКИРОВКА ПРОКСИ ---
 for key in ['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY']:
     os.environ.pop(key, None)
 
 import time
 import json
+import socket
 import hvac
 import requests
 from kafka import KafkaConsumer
@@ -12,10 +12,18 @@ from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# --- 1. Получение секретов из Vault ---
+# --- ГЛОБАЛЬНЫЙ ПАТЧ ДЛЯ ОБХОДА БАГА DOCKER DNS (Errno -5) ---
+old_getaddrinfo = socket.getaddrinfo
+def new_getaddrinfo(*args, **kwargs):
+    responses = old_getaddrinfo(*args, **kwargs)
+    ipv4_only = [res for res in responses if res[0] == socket.AF_INET]
+    return ipv4_only if ipv4_only else responses
+socket.getaddrinfo = new_getaddrinfo
+# -----------------------------------------------------------
+
 def get_vault_db_credentials():
     time.sleep(3)
-    vault_url = os.getenv('VAULT_ADDR', 'http://10.199.0.20:8200')
+    vault_url = os.getenv('VAULT_ADDR', 'http://vault:8200')
     vault_token = os.getenv('VAULT_TOKEN', 'myroot')
 
     session = requests.Session()
@@ -35,11 +43,10 @@ def get_vault_db_credentials():
             time.sleep(3)
     raise Exception("Не удалось получить секреты из Vault")
 
-# --- 2. Настройка БД ---
 credentials = get_vault_db_credentials()
 DB_USER = credentials['username']
 DB_PASS = credentials['password']
-DB_HOST = os.getenv("DB_HOST", "10.199.0.10")
+DB_HOST = os.getenv("DB_HOST", "db")
 DB_PORT = os.getenv("POSTGRES_PORT", "5432")
 DB_NAME = os.getenv("POSTGRES_DB", "mydb")
 
@@ -57,8 +64,7 @@ class PredictionResult(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# --- 3. Настройка Kafka Consumer ---
-KAFKA_BROKER = os.getenv("KAFKA_BROKER", "10.199.0.40:29092")
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka:29092")
 
 def start_consumer():
     print(f"Consumer: Подключение к Kafka ({KAFKA_BROKER})...")
