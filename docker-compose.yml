@@ -99,8 +99,6 @@ services:
     depends_on:
       vault:
         condition: service_started
-      vault-init:
-        condition: service_completed_successfully
       db:
         condition: service_healthy
       kafka:

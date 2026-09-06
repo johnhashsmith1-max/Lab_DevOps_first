@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b2a54b0f-3a86-4bda-bfa9-588e11389355" name="Changes" comment="- Define Python packages with pinned versions&#10;- Include ML, NLP, testing, and DVC libraries">
-      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
-    </list>
+    <list default="true" id="b2a54b0f-3a86-4bda-bfa9-588e11389355" name="Changes" comment="- Define Python packages with pinned versions&#10;- Include ML, NLP, testing, and DVC libraries" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -92,7 +90,7 @@
       <workItem from="1778075401499" duration="14437000" />
       <workItem from="1778153936154" duration="1058000" />
       <workItem from="1778155141741" duration="34597000" />
-      <workItem from="1788603767800" duration="10105000" />
+      <workItem from="1788603767800" duration="10433000" />
     </task>
     <task id="LOCAL-00001" summary="- Define Python packages with pinned versions&#10;- Include ML, NLP, testing, and DVC libraries&quot;">
       <option name="closed" value="true" />
