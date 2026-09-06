@@ -1,4 +1,9 @@
 import os
+
+# --- БЛОКИРОВКА ПРОКСИ ---
+for key in ['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY']:
+    os.environ.pop(key, None)
+
 import time
 import json
 import hvac
@@ -10,6 +15,9 @@ from sqlalchemy.orm import sessionmaker
 
 # --- 1. Получение секретов из Vault ---
 def get_vault_db_credentials():
+    # Даем внутреннему DNS Docker 3 секунды на стабилизацию
+    time.sleep(3)
+
     vault_url = os.getenv('VAULT_ADDR', 'http://vault:8200')
     vault_token = os.getenv('VAULT_TOKEN', 'myroot')
 
@@ -30,7 +38,6 @@ def get_vault_db_credentials():
             print(f"Consumer: Ошибка подключения к Vault: {e}")
             time.sleep(2)
     raise Exception("Не удалось получить секреты из Vault после 10 попыток")
-
 
 # --- 2. Настройка БД ---
 credentials = get_vault_db_credentials()

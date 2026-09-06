@@ -67,8 +67,6 @@ services:
       - "8000:8000"
     depends_on:
       - kafka
-    links:
-      - kafka
     environment:
       KAFKA_BROKER: "kafka:29092"
       NO_PROXY: "*"
@@ -78,20 +76,20 @@ services:
     build: .
     command: [ "python", "-u", "consumer.py" ]
     depends_on:
+      vault:
+        condition: service_started
       vault-init:
         condition: service_completed_successfully
       db:
         condition: service_healthy
       kafka:
         condition: service_started
-    links:
-      - vault
-      - db
-      - kafka
     environment:
-      PYTHON UNBUFFERED: 1
+      PYTHONUNBUFFERED: 1
       VAULT_ADDR: "http://vault:8200"
       VAULT_TOKEN: "myroot"
       DB_HOST: "db"
       POSTGRES_DB: "mydb"
       KAFKA_BROKER: "kafka:29092"
+      NO_PROXY: "*"
+      no_proxy: "*"
